@@ -14,6 +14,7 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
     @IBOutlet weak var tableView: UITableView!
     
     var posts = [PFObject]()
+    let myRefreshControl = UIRefreshControl()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,21 +23,30 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
         tableView.dataSource = self
 
         // Do any additional setup after loading the view.
+        myRefreshControl.addTarget(self, action: #selector(loadPosts), for: .valueChanged)
+        tableView.refreshControl = myRefreshControl
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        loadPosts()
         
+    }
+    
+    @objc func loadPosts() {
         let query = PFQuery(className:"Posts")
         query.includeKey("author")
         query.limit = 20
+        query.order(byDescending: "createdAt")
         
         query.findObjectsInBackground { (posts, error) in
             if posts != nil {
                 self.posts = posts!
                 self.tableView.reloadData()
+                self.myRefreshControl.endRefreshing()
             }
         }
+        
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -47,7 +57,7 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
         let caption = post["caption"]
         
         cell.usernameLabel.text = user.username
-        cell.captionLabel.text = caption as! String
+        cell.captionLabel.text = caption as? String
         
         let imageFile = post["image"] as! PFFileObject
         let urlString = imageFile.url!
